@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Home, Plus, Search, Briefcase, MessageCircle, User, Menu, X, HelpCircle } from 'lucide-react';
+import { Home, Plus, Search, Briefcase, MessageCircle, User, Menu, X, HelpCircle, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface NavigationProps {
@@ -26,6 +26,15 @@ const Navigation: React.FC<NavigationProps> = ({ currentPage, onPageChange }) =>
     onPageChange(pageId);
     setIsMobileMenuOpen(false);
   };
+
+  const handleLogout = async () => {
+    await logout();
+    handleNavClick('home');
+  };
+
+  // Default avatar if user doesn't have one
+  const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.profile?.name || 'User')}&background=10b981&color=fff`;
+  const userAvatar = user?.profile?.avatar_url || defaultAvatar;
 
   return (
     <nav className="bg-white shadow-sm border-b border-stone-200">
@@ -68,17 +77,23 @@ const Navigation: React.FC<NavigationProps> = ({ currentPage, onPageChange }) =>
               <div className="flex items-center space-x-3 ml-4 pl-4 border-l border-stone-200">
                 <div className="flex items-center space-x-2">
                   <img
-                    src={user.avatar || `https://images.pexels.com/photos/1040880/pexels-photo-1040880.jpeg?auto=compress&cs=tinysrgb&w=32&h=32&fit=crop`}
-                    alt={user.name}
+                    src={userAvatar}
+                    alt={user.profile?.name || 'User'}
                     className="w-8 h-8 rounded-full object-cover"
                   />
-                  <span className="text-sm font-medium text-stone-700">{user.name}</span>
+                  <div className="text-sm">
+                    <p className="font-medium text-stone-700">{user.profile?.name || 'User'}</p>
+                    {isHelper && (
+                      <p className="text-xs text-emerald-600">Helper</p>
+                    )}
+                  </div>
                 </div>
                 <button
-                  onClick={logout}
-                  className="text-sm text-stone-500 hover:text-stone-700 transition-colors"
+                  onClick={handleLogout}
+                  className="p-2 text-stone-500 hover:text-stone-700 transition-colors"
+                  title="Logout"
                 >
-                  Logout
+                  <LogOut className="w-4 h-4" />
                 </button>
               </div>
             ) : (
@@ -136,20 +151,24 @@ const Navigation: React.FC<NavigationProps> = ({ currentPage, onPageChange }) =>
                 <div className="px-4 py-3 border-t border-stone-200 mt-2">
                   <div className="flex items-center space-x-3 mb-3">
                     <img
-                      src={user.avatar || `https://images.pexels.com/photos/1040880/pexels-photo-1040880.jpeg?auto=compress&cs=tinysrgb&w=40&h=40&fit=crop`}
-                      alt={user.name}
+                      src={userAvatar}
+                      alt={user.profile?.name || 'User'}
                       className="w-10 h-10 rounded-full object-cover"
                     />
                     <div>
-                      <div className="font-medium text-stone-900">{user.name}</div>
+                      <div className="font-medium text-stone-900">{user.profile?.name || 'User'}</div>
                       <div className="text-sm text-stone-500">{user.email}</div>
+                      {isHelper && (
+                        <div className="text-xs text-emerald-600">Helper Account</div>
+                      )}
                     </div>
                   </div>
                   <button
-                    onClick={logout}
-                    className="text-sm text-stone-500 hover:text-stone-700 transition-colors"
+                    onClick={handleLogout}
+                    className="flex items-center space-x-2 text-sm text-stone-500 hover:text-stone-700 transition-colors"
                   >
-                    Logout
+                    <LogOut className="w-4 h-4" />
+                    <span>Logout</span>
                   </button>
                 </div>
               ) : (

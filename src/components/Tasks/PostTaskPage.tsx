@@ -1,55 +1,96 @@
 import React, { useState } from 'react';
 import { Calendar, Clock, DollarSign, MapPin, Plus, ArrowLeft, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { TASK_CATEGORIES, Task } from '../../types';
+import { TASK_CATEGORIES } from '../../types';
+import { taskService } from '../../services/taskService';
 
 interface PostTaskPageProps {
   onPageChange: (page: string) => void;
 }
 
 const PostTaskPage: React.FC<PostTaskPageProps> = ({ onPageChange }) => {
-  const { user, isHelper } = useAuth();
+  const { user, isHelper, loading } = useAuth();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     category: '',
     budget: '',
+    budgetType: 'fixed' as 'fixed' | 'hourly',
     preferredDate: '',
     preferredTime: 'morning',
-    location: ''
+    location: {
+      address: '',
+      city: '',
+      state: '',
+      zipCode: ''
+    }
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [error, setError] = useState('');
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    
+    if (name.startsWith('location.')) {
+      const locationField = name.split('.')[1];
+      setFormData({
+        ...formData,
+        location: {
+          ...formData.location,
+          [locationField]: value
+        }
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value
+      });
+    }
+    setError('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError('');
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      const result = await taskService.createTask({
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        budget: formData.budget ? parseFloat(formData.budget) : null,
+        budget_type: formData.budgetType,
+        preferred_date: formData.preferredDate || null,
+        preferred_time: formData.preferredTime || null,
+        location: {
+          address: formData.location.address,
+          city: formData.location.city,
+          state: formData.location.state,
+          zip_code: formData.location.zipCode
+        }
+      });
 
-    const newTask: Task = {
-      id: Date.now().toString(),
-      ...formData,
-      budget: formData.budget ? parseInt(formData.budget) : undefined,
-      zipCode: user?.zipCode || '',
-      status: 'open',
-      posterId: user?.id || '',
-      applications: [],
-      createdAt: new Date().toISOString()
-    };
-
-    console.log('New task created:', newTask);
-    setIsSubmitting(false);
-    setIsSubmitted(true);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setIsSubmitted(true);
+      }
+    } catch (err) {
+      setError('Failed to create task. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
@@ -121,9 +162,15 @@ const PostTaskPage: React.FC<PostTaskPageProps> = ({ onPageChange }) => {
                   description: '',
                   category: '',
                   budget: '',
+                  budgetType: 'fixed',
                   preferredDate: '',
                   preferredTime: 'morning',
-                  location: ''
+                  location: {
+                    address: '',
+                    city: '',
+                    state: '',
+                    zipCode: ''
+                  }
                 });
               }}
               className="w-full py-3 px-4 border border-stone-300 text-stone-700 font-medium rounded-lg hover:bg-stone-50 transition-colors"
@@ -154,6 +201,12 @@ const PostTaskPage: React.FC<PostTaskPageProps> = ({ onPageChange }) => {
           </div>
 
           <form onSubmit={handleSubmit} className="p-8 space-y-6">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
+
             <div>
               <label htmlFor="title" className="block text-sm font-medium text-stone-700 mb-2">
                 Task Title *
@@ -184,7 +237,7 @@ const PostTaskPage: React.FC<PostTaskPageProps> = ({ onPageChange }) => {
               >
                 <option value="">Select a category</option>
                 {TASK_CATEGORIES.map((category) => (
-                  <option key={category} value={category}>
+                  <option key={category} value={category.toLowerCase().replace(/\s+/g, '-')}>
                     {category}
                   </option>
                 ))}
@@ -211,7 +264,7 @@ const PostTaskPage: React.FC<PostTaskPageProps> = ({ onPageChange }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label htmlFor="preferredDate" className="block text-sm font-medium text-stone-700 mb-2">
-                  Preferred Date *
+                  Preferred Date
                 </label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-3 h-5 w-5 text-stone-400" />
@@ -219,7 +272,6 @@ const PostTaskPage: React.FC<PostTaskPageProps> = ({ onPageChange }) => {
                     id="preferredDate"
                     name="preferredDate"
                     type="date"
-                    required
                     value={formData.preferredDate}
                     onChange={handleInputChange}
                     min={new Date().toISOString().split('T')[0]}
@@ -251,30 +303,61 @@ const PostTaskPage: React.FC<PostTaskPageProps> = ({ onPageChange }) => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label htmlFor="location" className="block text-sm font-medium text-stone-700 mb-2">
-                  Location *
-                </label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-3 h-5 w-5 text-stone-400" />
+            <div>
+              <h3 className="text-sm font-medium text-stone-700 mb-3">Task Location *</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
                   <input
-                    id="location"
-                    name="location"
+                    name="location.address"
                     type="text"
                     required
-                    value={formData.location}
+                    value={formData.location.address}
                     onChange={handleInputChange}
-                    className="pl-10 block w-full rounded-lg border border-stone-300 px-4 py-3 text-stone-900 placeholder-stone-500 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 transition-colors"
-                    placeholder="e.g., Beverly Hills, CA"
+                    className="block w-full rounded-lg border border-stone-300 px-4 py-3 text-stone-900 placeholder-stone-500 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 transition-colors"
+                    placeholder="Street Address"
+                  />
+                </div>
+                <div>
+                  <input
+                    name="location.city"
+                    type="text"
+                    required
+                    value={formData.location.city}
+                    onChange={handleInputChange}
+                    className="block w-full rounded-lg border border-stone-300 px-4 py-3 text-stone-900 placeholder-stone-500 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 transition-colors"
+                    placeholder="City"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <input
+                    name="location.state"
+                    type="text"
+                    required
+                    maxLength={2}
+                    value={formData.location.state}
+                    onChange={handleInputChange}
+                    className="block w-full rounded-lg border border-stone-300 px-4 py-3 text-stone-900 placeholder-stone-500 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 transition-colors"
+                    placeholder="State"
+                  />
+                  <input
+                    name="location.zipCode"
+                    type="text"
+                    required
+                    pattern="[0-9]{5}"
+                    value={formData.location.zipCode}
+                    onChange={handleInputChange}
+                    className="block w-full rounded-lg border border-stone-300 px-4 py-3 text-stone-900 placeholder-stone-500 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 transition-colors"
+                    placeholder="ZIP Code"
                   />
                 </div>
               </div>
+            </div>
 
-              <div>
-                <label htmlFor="budget" className="block text-sm font-medium text-stone-700 mb-2">
-                  Budget (Optional)
-                </label>
+            <div>
+              <label htmlFor="budget" className="block text-sm font-medium text-stone-700 mb-2">
+                Budget (Optional)
+              </label>
+              <div className="grid grid-cols-2 gap-4">
                 <div className="relative">
                   <DollarSign className="absolute left-3 top-3 h-5 w-5 text-stone-400" />
                   <input
@@ -282,15 +365,24 @@ const PostTaskPage: React.FC<PostTaskPageProps> = ({ onPageChange }) => {
                     name="budget"
                     type="number"
                     min="10"
-                    max="1000"
+                    max="10000"
                     value={formData.budget}
                     onChange={handleInputChange}
                     className="pl-10 block w-full rounded-lg border border-stone-300 px-4 py-3 text-stone-900 placeholder-stone-500 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 transition-colors"
                     placeholder="50"
                   />
                 </div>
-                <p className="mt-2 text-sm text-stone-500">Leave blank to let helpers bid on your task.</p>
+                <select
+                  name="budgetType"
+                  value={formData.budgetType}
+                  onChange={handleInputChange}
+                  className="block w-full rounded-lg border border-stone-300 px-4 py-3 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 transition-colors"
+                >
+                  <option value="fixed">Fixed Price</option>
+                  <option value="hourly">Hourly Rate</option>
+                </select>
               </div>
+              <p className="mt-2 text-sm text-stone-500">Leave blank to let helpers bid on your task.</p>
             </div>
 
             <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">

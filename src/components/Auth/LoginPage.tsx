@@ -22,14 +22,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onPageChange }) => {
     setError('');
 
     try {
-      const success = await login(formData.email, formData.password);
-      if (success) {
+      const result = await login(formData.email, formData.password);
+      if (result.success) {
         onPageChange('home');
       } else {
-        setError('Invalid email or password. Try: sarah@example.com or mike@example.com');
+        setError(result.error || 'Invalid email or password');
       }
     } catch (err) {
-      setError('Login failed. Please try again.');
+      setError('An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -179,6 +179,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onPageChange }) => {
           </div>
           <p className="text-xs text-emerald-600 mt-3">
             Click any account above to auto-fill the form. Password: "password"
+          </p>
+        </div>
+
+        {/* Development Notice */}
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+          <h3 className="text-sm font-semibold text-blue-800 mb-2">Development Mode</h3>
+          <p className="text-xs text-blue-600">
+            This is a live application connected to Supabase. Please create a new account or use your existing credentials to sign in.
           </p>
         </div>
       </div>

@@ -51,6 +51,13 @@ const HomePage: React.FC<HomePageProps> = ({ onPageChange }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-stone-50 via-white to-emerald-50">
+      {/* Development Notice */}
+      <div className="bg-blue-600 text-white py-3 px-4 text-center">
+        <p className="text-sm">
+          <strong>Development Mode:</strong> Email confirmation is currently enabled. After signing up, check your email to confirm your account before logging in.
+        </p>
+      </div>
+
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-20">

@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { Mail, Lock, User, MapPin, Phone, Eye, EyeOff, ArrowLeft, Wrench, Home } from 'lucide-react';
+import { Mail, Lock, User, MapPin, Phone, Eye, EyeOff, ArrowLeft, Wrench, Home, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { TASK_CATEGORIES } from '../../types';
+import { supabase } from '../../lib/supabase';
 
 interface SignupPageProps {
   onPageChange: (page: string) => void;
 }
 
 const SignupPage: React.FC<SignupPageProps> = ({ onPageChange }) => {
-  const { register } = useAuth();
+  const { register, updateProfile } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [userType, setUserType] = useState<'poster' | 'helper' | null>(null);
   const [formData, setFormData] = useState({
@@ -18,7 +19,7 @@ const SignupPage: React.FC<SignupPageProps> = ({ onPageChange }) => {
     zipCode: '',
     password: '',
     confirmPassword: '',
-    // Helper-specific fields
+    // Helper-specific fields for future use
     skills: [] as string[],
     serviceArea: [] as string[],
     hourlyRate: '',
@@ -28,6 +29,8 @@ const SignupPage: React.FC<SignupPageProps> = ({ onPageChange }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,24 +59,24 @@ const SignupPage: React.FC<SignupPageProps> = ({ onPageChange }) => {
     setError('');
 
     try {
-      const userData = {
-        ...formData,
-        role: userType,
-        serviceArea: userType === 'helper' ? [formData.zipCode] : undefined,
-        hourlyRate: userType === 'helper' ? parseInt(formData.hourlyRate) || 30 : undefined,
-        rating: userType === 'helper' ? 5.0 : undefined,
-        completedJobs: userType === 'helper' ? 0 : undefined,
-        verified: userType === 'helper' ? false : undefined
-      };
-
-      const success = await register(userData);
-      if (success) {
-        onPageChange('home');
+      // First, register the user with Supabase Auth
+      const result = await register(
+        formData.email,
+        formData.password,
+        formData.name,
+        userType!
+      );
+      
+      if (result.success) {
+        // Always show the email confirmation message for now
+        // since email confirmation is enabled on this Supabase project
+        setSuccessMessage('Account created successfully! Please check your email for a confirmation link. You must confirm your email before you can sign in.');
+        setIsSubmitted(true);
       } else {
-        setError('Registration failed. Please try again.');
+        setError(result.error || 'Registration failed');
       }
     } catch (err) {
-      setError('Registration failed. Please try again.');
+      setError('An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -97,7 +100,7 @@ const SignupPage: React.FC<SignupPageProps> = ({ onPageChange }) => {
   };
 
   const renderStep1 = () => (
-    <div className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
       <div className="text-center">
         <h2 className="text-3xl font-bold text-stone-900 mb-2">Join Rent-a-Husband</h2>
         <p className="text-stone-600">Choose how you'd like to use our platform</p>
@@ -172,7 +175,7 @@ const SignupPage: React.FC<SignupPageProps> = ({ onPageChange }) => {
       >
         Continue
       </button>
-    </div>
+    </form>
   );
 
   const renderStep2 = () => (
@@ -183,7 +186,7 @@ const SignupPage: React.FC<SignupPageProps> = ({ onPageChange }) => {
         </h2>
         <p className="text-stone-600">
           {userType === 'helper' 
-            ? 'Tell us about your skills and experience' 
+            ? 'Start with your basic information' 
             : 'Fill in your details to get started'
           }
         </p>
@@ -331,61 +334,11 @@ const SignupPage: React.FC<SignupPageProps> = ({ onPageChange }) => {
         </div>
 
         {userType === 'helper' && (
-          <>
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-3">
-                Skills & Services (Select all that apply)
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {TASK_CATEGORIES.slice(0, -1).map((category) => (
-                  <button
-                    key={category}
-                    type="button"
-                    onClick={() => handleSkillToggle(category)}
-                    className={`p-3 text-sm text-left border rounded-lg transition-colors ${
-                      formData.skills.includes(category)
-                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                        : 'border-stone-200 hover:border-stone-300'
-                    }`}
-                  >
-                    {category}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="hourlyRate" className="block text-sm font-medium text-stone-700 mb-2">
-                Hourly Rate ($)
-              </label>
-              <input
-                id="hourlyRate"
-                name="hourlyRate"
-                type="number"
-                min="15"
-                max="200"
-                value={formData.hourlyRate}
-                onChange={handleInputChange}
-                className="block w-full rounded-lg border border-stone-300 px-3 py-3 text-stone-900 placeholder-stone-500 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 transition-colors"
-                placeholder="35"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="bio" className="block text-sm font-medium text-stone-700 mb-2">
-                Bio (Optional)
-              </label>
-              <textarea
-                id="bio"
-                name="bio"
-                rows={3}
-                value={formData.bio}
-                onChange={handleInputChange}
-                className="block w-full rounded-lg border border-stone-300 px-3 py-3 text-stone-900 placeholder-stone-500 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 transition-colors resize-none"
-                placeholder="Tell potential clients about your experience and what makes you a great helper..."
-              />
-            </div>
-          </>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-blue-700">
+              <strong>Note:</strong> After creating your account, you'll be able to complete your helper profile with skills, hourly rate, and other details from your dashboard.
+            </p>
+          </div>
         )}
 
         <div className="flex space-x-4">
@@ -407,6 +360,26 @@ const SignupPage: React.FC<SignupPageProps> = ({ onPageChange }) => {
       </form>
     </div>
   );
+
+  if (isSubmitted && successMessage) {
+    return (
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle className="w-8 h-8 text-emerald-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-stone-900 mb-4">Account Created!</h2>
+          <p className="text-stone-600 mb-6">{successMessage}</p>
+          <button
+            onClick={() => onPageChange('login')}
+            className="w-full py-3 px-4 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors"
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-stone-50 via-white to-emerald-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
