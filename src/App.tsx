@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider } from './contexts/AuthContext';
 import Navigation from './components/Navigation';
 import HomePage from './components/HomePage';
@@ -9,9 +9,23 @@ import MyJobsPage from './components/Jobs/MyJobsPage';
 import MessagesPage from './components/Messages/MessagesPage';
 import ProfilePage from './components/Profile/ProfilePage';
 import SupportPage from './components/Support/SupportPage';
+import AuthCallback from './components/Auth/AuthCallback';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
+  const [isAuthCallback, setIsAuthCallback] = useState(false);
+
+  useEffect(() => {
+    // Check if this is an auth callback (has access_token in URL)
+    if (window.location.hash && window.location.hash.includes('access_token')) {
+      setIsAuthCallback(true);
+    }
+  }, []);
+
+  // Show auth callback page if we're processing authentication
+  if (isAuthCallback) {
+    return <AuthCallback />;
+  }
 
   const renderPage = () => {
     switch (currentPage) {

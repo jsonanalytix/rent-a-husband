@@ -4,7 +4,14 @@ import type { Database } from '../types/supabase';
 const supabaseUrl = 'https://gzkziuaunzqzzypiyovl.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6a3ppdWF1bnpxenp5cGl5b3ZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5NTgzOTcsImV4cCI6MjA2NTUzNDM5N30.IFxdlWH9cmogeY2ql71aYKkAgE67y0SByxdRe8mw4t0';
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+    flowType: 'pkce'
+  }
+});
 
 // Edge Function URLs
 export const EDGE_FUNCTIONS = {
